@@ -33,6 +33,7 @@ from flask import (
     request,
     send_from_directory,
     url_for,
+    jsonify,
 )
 from flask_login import login_required
 
@@ -65,12 +66,12 @@ app.config['NEW_VERSION_AVAILABLE'] = False
 
 app.config['LOGIN_DISABLED'] = False
 
-#app.config["EXPLAIN_TEMPLATE_LOADING"] = True
+# app.config["EXPLAIN_TEMPLATE_LOADING"] = True
 
 # Disables caching of the templates
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-notification_debug_log=[]
+notification_debug_log = []
 
 def init_app_secret(datastore_path):
     secret = ""
@@ -128,7 +129,7 @@ def _jinja2_filter_datetimestamp(timestamp, format="%Y-%m-%d %H:%M:%S"):
 
 
 class User(flask_login.UserMixin):
-    id=None
+    id = None
 
     def set_password(self, password):
         return True
@@ -178,7 +179,7 @@ def changedetection_app(config=None, datastore_o=None):
     global datastore
     datastore = datastore_o
 
-    #app.config.update(config or {})
+    # app.config.update(config or {})
 
     login_manager = flask_login.LoginManager(app)
     login_manager.login_view = 'login'
@@ -892,16 +893,24 @@ def changedetection_app(config=None, datastore_o=None):
 
             url = request.form.get('url').strip()
             if datastore.url_exists(url):
-                flash('The URL {} already exists'.format(url), "error")
-                return redirect(url_for('index'))
+                existing_uuid = datastore.get_uuid_from_url(url=url);
+
+                if existing_uuid != '0':
+                    return jsonify(
+                        uuid=existing_uuid,
+                    )
+                else:
+                    flash('Could not get uuid for'.format(url), "error")
+                    return redirect(url_for('index'))
 
             # @todo add_watch should throw a custom Exception for validation etc
             new_uuid = datastore.add_watch(url=url, tag=request.form.get('tag').strip())
             # Straight into the queue.
             update_q.put(new_uuid)
 
-            flash("Watch added.")
-            return redirect(url_for('index'))
+            return jsonify(
+                uuid=new_uuid,
+            )
         else:
             flash("Error")
             return redirect(url_for('index'))

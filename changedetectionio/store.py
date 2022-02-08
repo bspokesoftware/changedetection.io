@@ -42,12 +42,12 @@ class ChangeDetectionStore:
                 },
                 'application': {
                     'password': False,
-                    'base_url' : None,
+                    'base_url': None,
                     'extract_title_as_title': False,
                     'fetch_backend': 'html_requests',
-                    'global_ignore_text': [], # List of text to ignore when calculating the comparison checksum
+                    'global_ignore_text': [],  # List of text to ignore when calculating the comparison checksum
                     'ignore_whitespace': False,
-                    'notification_urls': [], # Apprise URL list
+                    'notification_urls': [],  # Apprise URL list
                     # Custom notification content
                     'notification_title': default_notification_title,
                     'notification_body': default_notification_body,
@@ -75,9 +75,9 @@ class ChangeDetectionStore:
             'body': None,
             'method': 'GET',
             'history': {},  # Dict of timestamp and output stripped filename
-            'ignore_text': [], # List of text to ignore when calculating the comparison checksum
+            'ignore_text': [],  # List of text to ignore when calculating the comparison checksum
             # Custom notification content
-            'notification_urls': [], # List of URLs to add to the notification Queue (Usually AppRise)
+            'notification_urls': [],  # List of URLs to add to the notification Queue (Usually AppRise)
             'notification_title': default_notification_title,
             'notification_body': default_notification_body,
             'notification_format': default_notification_format,
@@ -220,13 +220,19 @@ class ChangeDetectionStore:
                 self.__data['watching'][uuid]['fetch_backend'] = self.__data['settings']['application']['fetch_backend']
 
         # Re #152, Return env base_url if not overriden, @todo also prefer the proxy pass url
-        env_base_url = os.getenv('BASE_URL','')
+        env_base_url = os.getenv('BASE_URL', '')
         if not self.__data['settings']['application']['base_url']:
-          self.__data['settings']['application']['base_url'] = env_base_url.strip('" ')
+            self.__data['settings']['application']['base_url'] = env_base_url.strip('" ')
 
         self.__data['has_unviewed'] = has_unviewed
 
         return self.__data
+
+    def get_uuid_from_url(self, url):
+        for uuid, watch in self.data['watching'].items():
+            if watch['url'] == url:
+                return uuid
+        return '0'
 
     def get_all_tags(self):
         tags = []
@@ -288,7 +294,7 @@ class ChangeDetectionStore:
         return self.data['watching'][uuid].get(val)
 
     # Remove a watchs data but keep the entry (URL etc)
-    def scrub_watch(self, uuid, limit_timestamp = False):
+    def scrub_watch(self, uuid, limit_timestamp=False):
 
         import hashlib
         del_timestamps = []
@@ -305,7 +311,6 @@ class ChangeDetectionStore:
             self.data['watching'][uuid]['last_checked'] = 0
             self.data['watching'][uuid]['last_changed'] = 0
             self.data['watching'][uuid]['previous_md5'] = ""
-
 
         for timestamp in del_timestamps:
             del self.data['watching'][uuid]['history'][str(timestamp)]
@@ -344,7 +349,8 @@ class ChangeDetectionStore:
 
             # Incase these are copied across, assume it's a reference and deepcopy()
             apply_extras = deepcopy(extras)
-            for k in ['uuid', 'history', 'last_checked', 'last_changed', 'newest_history_key', 'previous_md5', 'viewed']:
+            for k in ['uuid', 'history', 'last_checked', 'last_changed', 'newest_history_key', 'previous_md5',
+                      'viewed']:
                 if k in apply_extras:
                     del apply_extras[k]
 
@@ -387,7 +393,7 @@ class ChangeDetectionStore:
         except RuntimeError as e:
             # Try again in 15 seconds
             time.sleep(15)
-            logging.error ("! Data changed when writing to JSON, trying again.. %s", str(e))
+            logging.error("! Data changed when writing to JSON, trying again.. %s", str(e))
             self.sync_to_json()
             return
         else:
@@ -396,14 +402,14 @@ class ChangeDetectionStore:
                 # Re #286  - First write to a temp file, then confirm it looks OK and rename it
                 # This is a fairly basic strategy to deal with the case that the file is corrupted,
                 # system was out of memory, out of RAM etc
-                with open(self.json_store_path+".tmp", 'w') as json_file:
+                with open(self.json_store_path + ".tmp", 'w') as json_file:
                     json.dump(data, json_file, indent=4)
 
             except Exception as e:
                 logging.error("Error writing JSON!! (Main JSON file save was skipped) : %s", str(e))
 
             else:
-                os.rename(self.json_store_path+".tmp", self.json_store_path)
+                os.rename(self.json_store_path + ".tmp", self.json_store_path)
 
             self.needs_write = False
 
@@ -429,9 +435,9 @@ class ChangeDetectionStore:
     # Go through the datastore path and remove any snapshots that are not mentioned in the index
     # This usually is not used, but can be handy.
     def remove_unused_snapshots(self):
-        print ("Removing snapshots from datastore that are not in the index..")
+        print("Removing snapshots from datastore that are not in the index..")
 
-        index=[]
+        index = []
         for uuid in self.data['watching']:
             for id in self.data['watching'][uuid]['history']:
                 index.append(self.data['watching'][uuid]['history'][str(id)])
@@ -440,5 +446,5 @@ class ChangeDetectionStore:
         # Only in the sub-directories
         for item in pathlib.Path(self.datastore_path).rglob("*/*txt"):
             if not str(item) in index:
-                print ("Removing",item)
+                print("Removing", item)
                 unlink(item)
